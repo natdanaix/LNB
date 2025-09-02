@@ -19,7 +19,7 @@
   <!-- ฟอร์มเพิ่มข้อมูล -->
   <form id="dataForm">
     <input type="text" id="model" placeholder="ชื่อรุ่น" required>
-    <input type="number" id="value" placeholder="ค่า dB" required>
+    <input type="number" id="value" placeholder="ค่า dB" min="0" max="100" required>
     <button type="submit">เพิ่มข้อมูล</button>
     <button type="button" id="resetBtn" style="background:#f55;color:#fff;">รีเซ็ตทั้งหมด</button>
   </form>
@@ -46,8 +46,18 @@
     const ctx = document.getElementById('chart').getContext('2d');
     const chart = new Chart(ctx, {
       type: 'bar',
-      data: { labels: [], datasets: [{ label: 'dB Value', data: [], borderWidth: 1 }] }
+      data: { labels: [], datasets: [{ label: 'dB Value', data: [], backgroundColor: [] }] },
+      options: { scales: { y: { min: 0, max: 100 } } }
     });
+
+    // ฟังก์ชันเลือกสีตามระดับ
+    function getColor(value) {
+      if (value <= 60) return "red";          // 0–20
+      if (value <= 70) return "orange";       // 21–40
+      if (value <= 79) return "yellow";       // 41–60
+      if (value <= 100) return "lightgreen";   // 61–80
+      return "green";                         // 81–100
+    }
 
     // อัปเดตตารางและกราฟ
     function render() {
@@ -61,7 +71,7 @@
           <tr>
             <td>${d.model}</td>
             <td>
-              <input type="number" value="${d.value}" onchange="updateValue(${i}, this.value)">
+              <input type="number" min="0" max="100" value="${d.value}" onchange="updateValue(${i}, this.value)">
             </td>
             <td>
               <button onclick="deleteRow(${i})">ลบ</button>
@@ -73,6 +83,7 @@
       // update chart
       chart.data.labels = data.map(d => d.model);
       chart.data.datasets[0].data = data.map(d => d.value);
+      chart.data.datasets[0].backgroundColor = data.map(d => getColor(d.value));
       chart.update();
 
       // save to localStorage
