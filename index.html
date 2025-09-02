@@ -6,125 +6,160 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    h2 { margin-top: 40px; }
+    table { border-collapse: collapse; margin-top: 10px; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
     th { background: #f4f4f4; }
-    button { margin: 5px; padding: 5px 10px; cursor: pointer; }
-    input[type="number"] { width: 70px; }
+    button { margin: 3px; padding: 5px 10px; cursor: pointer; }
+    input[type="number"] { width: 80px; }
+    input[type="text"] { width: 120px; }
+    .reset-btn { background: #f55; color: #fff; }
+    .section { border: 2px solid #ccc; padding: 15px; margin-bottom: 30px; border-radius: 8px; }
   </style>
 </head>
 <body>
   <h1>📊 LND Measurement (dB)</h1>
 
-  <!-- ฟอร์มเพิ่มข้อมูล -->
-  <form id="dataForm">
-    <input type="text" id="model" placeholder="ชื่อรุ่น" required>
-    <input type="number" id="value" placeholder="ค่า dB" min="0" max="100" required>
-    <button type="submit">เพิ่มข้อมูล</button>
-    <button type="button" id="resetBtn" style="background:#f55;color:#fff;">รีเซ็ตทั้งหมด</button>
-  </form>
+  <!-- ===== Section 12687 ===== -->
+  <div class="section">
+    <h2>ความถี่ 12687</h2>
+    <form id="form12687">
+      <input type="text" id="model12687" placeholder="ชื่อรุ่น" required>
+      <input type="number" id="value12687" placeholder="ค่า dB" step="0.1" min="60" max="100" required>
+      <button type="submit">เพิ่มข้อมูล</button>
+      <button type="button" class="reset-btn" onclick="resetData('12687')">รีเซ็ต</button>
+    </form>
 
-  <!-- ตาราง -->
-  <h2>ผลการวัด</h2>
-  <table id="dataTable">
-    <thead>
-      <tr>
-        <th>รุ่น</th>
-        <th>ค่า (dB)</th>
-        <th>แก้ไข</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <table id="table12687">
+      <thead>
+        <tr><th>รุ่น</th><th>ค่า (dB)</th><th>จัดการ</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-  <!-- กราฟ -->
-  <canvas id="chart" width="400" height="200"></canvas>
+    <canvas id="chart12687" height="200"></canvas>
+  </div>
+
+  <!-- ===== Section 11560 ===== -->
+  <div class="section">
+    <h2>ความถี่ 11560</h2>
+    <form id="form11560">
+      <input type="text" id="model11560" placeholder="ชื่อรุ่น" required>
+      <input type="number" id="value11560" placeholder="ค่า dB" step="0.1" min="60" max="100" required>
+      <button type="submit">เพิ่มข้อมูล</button>
+      <button type="button" class="reset-btn" onclick="resetData('11560')">รีเซ็ต</button>
+    </form>
+
+    <table id="table11560">
+      <thead>
+        <tr><th>รุ่น</th><th>ค่า (dB)</th><th>จัดการ</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <canvas id="chart11560" height="200"></canvas>
+  </div>
 
   <script>
-    let data = JSON.parse(localStorage.getItem("measurements")) || [];
+    // datasets
+    let data12687 = JSON.parse(localStorage.getItem("measurements12687")) || [];
+    let data11560 = JSON.parse(localStorage.getItem("measurements11560")) || [];
 
-    const ctx = document.getElementById('chart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels: [], datasets: [{ label: 'dB Value', data: [], backgroundColor: [] }] },
-      options: { scales: { y: { min: 0, max: 100 } } }
-    });
-
-    // ฟังก์ชันเลือกสีตามระดับ
+    // ฟังก์ชันสีแบบ 5 ระดับ
     function getColor(value) {
-      if (value <= 60) return "red";          // 0–20
-      if (value <= 70) return "orange";       // 21–40
-      if (value <= 79) return "yellow";       // 41–60
-      if (value <= 100) return "lightgreen";   // 61–80
-      return "green";                         // 81–100
+      if (value < 70) return 'rgba(255,0,0,0.8)';      // แดง
+      else if (value < 80) return 'rgba(255,165,0,0.8)'; // ส้ม
+      else if (value < 90) return 'rgba(255,255,0,0.8)'; // เหลือง
+      else if (value < 95) return 'rgba(144,238,144,0.8)'; // เขียวอ่อน
+      else return 'rgba(0,128,0,0.9)';                  // เขียวเข้ม
     }
 
-    // อัปเดตตารางและกราฟ
-    function render() {
-      data.sort((a, b) => b.value - a.value);
+    // สร้าง chart object
+    const chart12687 = new Chart(document.getElementById('chart12687').getContext('2d'), {
+      type: 'bar',
+      data: { labels: [], datasets: [{ label: '12687 dB', data: [], backgroundColor: [] }] }
+    });
+    const chart11560 = new Chart(document.getElementById('chart11560').getContext('2d'), {
+      type: 'bar',
+      data: { labels: [], datasets: [{ label: '11560 dB', data: [], backgroundColor: [] }] }
+    });
 
-      // update table
-      const tbody = document.querySelector('#dataTable tbody');
+    // ฟังก์ชัน render
+    function render(freq) {
+      let dataset = (freq === '12687') ? data12687 : data11560;
+      dataset.sort((a,b) => b.value - a.value);
+
+      // ตาราง
+      const tbody = document.querySelector(`#table${freq} tbody`);
       tbody.innerHTML = '';
-      data.forEach((d, i) => {
+      dataset.forEach((d, i) => {
         tbody.innerHTML += `
           <tr>
-            <td>${d.model}</td>
-            <td>
-              <input type="number" min="0" max="100" value="${d.value}" onchange="updateValue(${i}, this.value)">
-            </td>
-            <td>
-              <button onclick="deleteRow(${i})">ลบ</button>
-            </td>
-          </tr>
-        `;
+            <td><input type="text" value="${d.model}" onchange="updateModel('${freq}',${i},this.value)"></td>
+            <td><input type="number" step="0.1" min="60" max="100" value="${d.value.toFixed(1)}" onchange="updateValue('${freq}',${i},this.value)"></td>
+            <td><button onclick="deleteRow('${freq}',${i})">ลบ</button></td>
+          </tr>`;
       });
 
-      // update chart
-      chart.data.labels = data.map(d => d.model);
-      chart.data.datasets[0].data = data.map(d => d.value);
-      chart.data.datasets[0].backgroundColor = data.map(d => getColor(d.value));
+      // กราฟ
+      const chart = (freq === '12687') ? chart12687 : chart11560;
+      chart.data.labels = dataset.map(d => d.model);
+      chart.data.datasets[0].data = dataset.map(d => d.value.toFixed(1));
+      chart.data.datasets[0].backgroundColor = dataset.map(d => getColor(d.value));
       chart.update();
 
-      // save to localStorage
-      localStorage.setItem("measurements", JSON.stringify(data));
+      // save
+      localStorage.setItem("measurements"+freq, JSON.stringify(dataset));
     }
 
-    // เพิ่มข้อมูลใหม่
-    document.getElementById('dataForm').addEventListener('submit', e => {
+    // เพิ่มข้อมูล
+    document.getElementById('form12687').addEventListener('submit', e => {
       e.preventDefault();
-      const model = document.getElementById('model').value.trim();
-      const value = parseFloat(document.getElementById('value').value);
-
+      let model = document.getElementById('model12687').value.trim();
+      let value = parseFloat(document.getElementById('value12687').value);
       if (!model || isNaN(value)) return;
-      data.push({ model, value });
+      data12687.push({ model, value });
       e.target.reset();
-      render();
+      render('12687');
+    });
+    document.getElementById('form11560').addEventListener('submit', e => {
+      e.preventDefault();
+      let model = document.getElementById('model11560').value.trim();
+      let value = parseFloat(document.getElementById('value11560').value);
+      if (!model || isNaN(value)) return;
+      data11560.push({ model, value });
+      e.target.reset();
+      render('11560');
     });
 
-    // รีเซ็ตข้อมูล
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      if (confirm("ต้องการล้างข้อมูลทั้งหมดหรือไม่?")) {
-        data = [];
-        localStorage.removeItem("measurements");
-        render();
+    // ฟังก์ชันแก้ไข/ลบ/รีเซ็ต
+    window.updateValue = function(freq, index, newValue) {
+      let dataset = (freq==='12687') ? data12687 : data11560;
+      dataset[index].value = parseFloat(newValue);
+      render(freq);
+    }
+    window.updateModel = function(freq, index, newName) {
+      let dataset = (freq==='12687') ? data12687 : data11560;
+      dataset[index].model = newName;
+      render(freq);
+    }
+    window.deleteRow = function(freq, index) {
+      let dataset = (freq==='12687') ? data12687 : data11560;
+      dataset.splice(index,1);
+      render(freq);
+    }
+    window.resetData = function(freq) {
+      if (confirm("ต้องการล้างข้อมูลทั้งหมดของ "+freq+" หรือไม่?")) {
+        if (freq==='12687') data12687 = [];
+        else data11560 = [];
+        localStorage.removeItem("measurements"+freq);
+        render(freq);
       }
-    });
-
-    // ฟังก์ชันแก้ไขค่า
-    window.updateValue = function(index, newValue) {
-      data[index].value = parseFloat(newValue);
-      render();
     }
 
-    // ลบข้อมูล
-    window.deleteRow = function(index) {
-      data.splice(index, 1);
-      render();
-    }
-
-    // แสดงข้อมูลครั้งแรก
-    render();
+    // render ครั้งแรก
+    render('12687');
+    render('11560');
   </script>
 </body>
 </html>
