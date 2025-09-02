@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>LND Measurement App</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="p-6 font-sans">
+  <h1>📊 LND Measurement (dB)</h1>
+
+  <!-- Form -->
+  <form id="dataForm">
+    <input type="text" id="model" placeholder="ชื่อรุ่น" required>
+    <input type="number" id="value" placeholder="ค่า dB" required>
+    <button type="submit">เพิ่มข้อมูล</button>
+  </form>
+
+  <!-- Table -->
+  <h2>ผลการวัด</h2>
+  <table border="1" id="dataTable">
+    <thead>
+      <tr>
+        <th>รุ่น</th>
+        <th>ค่า (dB)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Chart -->
+  <canvas id="chart" width="400" height="200"></canvas>
+
+  <script>
+    const data = [];
+    const ctx = document.getElementById('chart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'dB Value',
+          data: [],
+          borderWidth: 1
+        }]
+      }
+    });
+
+    // ฟังก์ชันเพิ่มข้อมูล
+    document.getElementById('dataForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const model = document.getElementById('model').value;
+      const value = parseFloat(document.getElementById('value').value);
+
+      data.push({model, value});
+      data.sort((a, b) => b.value - a.value); // เรียงจากมากไปน้อย
+
+      // อัปเดตตาราง
+      const tbody = document.querySelector('#dataTable tbody');
+      tbody.innerHTML = '';
+      data.forEach(d => {
+        tbody.innerHTML += `<tr><td>${d.model}</td><td>${d.value}</td></tr>`;
+      });
+
+      // อัปเดตกาาฟ
+      chart.data.labels = data.map(d => d.model);
+      chart.data.datasets[0].data = data.map(d => d.value);
+      chart.update();
+
+      // Reset form
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>
