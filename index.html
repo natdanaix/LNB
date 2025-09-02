@@ -1,73 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+  <meta charset="UTF-8">
   <title>LND Measurement App</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #f4f4f4; }
+    button { margin: 5px; padding: 5px 10px; cursor: pointer; }
+    input[type="number"] { width: 70px; }
+  </style>
 </head>
-<body class="p-6 font-sans">
+<body>
   <h1>📊 LND Measurement (dB)</h1>
 
-  <!-- Form -->
+  <!-- ฟอร์มเพิ่มข้อมูล -->
   <form id="dataForm">
     <input type="text" id="model" placeholder="ชื่อรุ่น" required>
     <input type="number" id="value" placeholder="ค่า dB" required>
     <button type="submit">เพิ่มข้อมูล</button>
+    <button type="button" id="resetBtn" style="background:#f55;color:#fff;">รีเซ็ตทั้งหมด</button>
   </form>
 
-  <!-- Table -->
+  <!-- ตาราง -->
   <h2>ผลการวัด</h2>
-  <table border="1" id="dataTable">
+  <table id="dataTable">
     <thead>
       <tr>
         <th>รุ่น</th>
         <th>ค่า (dB)</th>
+        <th>แก้ไข</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
-  <!-- Chart -->
+  <!-- กราฟ -->
   <canvas id="chart" width="400" height="200"></canvas>
 
   <script>
-    const data = [];
+    let data = JSON.parse(localStorage.getItem("measurements")) || [];
+
     const ctx = document.getElementById('chart').getContext('2d');
     const chart = new Chart(ctx, {
       type: 'bar',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'dB Value',
-          data: [],
-          borderWidth: 1
-        }]
-      }
+      data: { labels: [], datasets: [{ label: 'dB Value', data: [], borderWidth: 1 }] }
     });
 
-    // ฟังก์ชันเพิ่มข้อมูล
-    document.getElementById('dataForm').addEventListener('submit', e => {
-      e.preventDefault();
-      const model = document.getElementById('model').value;
-      const value = parseFloat(document.getElementById('value').value);
+    // อัปเดตตารางและกราฟ
+    function render() {
+      data.sort((a, b) => b.value - a.value);
 
-      data.push({model, value});
-      data.sort((a, b) => b.value - a.value); // เรียงจากมากไปน้อย
-
-      // อัปเดตตาราง
+      // update table
       const tbody = document.querySelector('#dataTable tbody');
       tbody.innerHTML = '';
-      data.forEach(d => {
-        tbody.innerHTML += `<tr><td>${d.model}</td><td>${d.value}</td></tr>`;
+      data.forEach((d, i) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${d.model}</td>
+            <td>
+              <input type="number" value="${d.value}" onchange="updateValue(${i}, this.value)">
+            </td>
+            <td>
+              <button onclick="deleteRow(${i})">ลบ</button>
+            </td>
+          </tr>
+        `;
       });
 
-      // อัปเดตกาาฟ
+      // update chart
       chart.data.labels = data.map(d => d.model);
       chart.data.datasets[0].data = data.map(d => d.value);
       chart.update();
 
-      // Reset form
+      // save to localStorage
+      localStorage.setItem("measurements", JSON.stringify(data));
+    }
+
+    // เพิ่มข้อมูลใหม่
+    document.getElementById('dataForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const model = document.getElementById('model').value.trim();
+      const value = parseFloat(document.getElementById('value').value);
+
+      if (!model || isNaN(value)) return;
+      data.push({ model, value });
       e.target.reset();
+      render();
     });
+
+    // รีเซ็ตข้อมูล
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (confirm("ต้องการล้างข้อมูลทั้งหมดหรือไม่?")) {
+        data = [];
+        localStorage.removeItem("measurements");
+        render();
+      }
+    });
+
+    // ฟังก์ชันแก้ไขค่า
+    window.updateValue = function(index, newValue) {
+      data[index].value = parseFloat(newValue);
+      render();
+    }
+
+    // ลบข้อมูล
+    window.deleteRow = function(index) {
+      data.splice(index, 1);
+      render();
+    }
+
+    // แสดงข้อมูลครั้งแรก
+    render();
   </script>
 </body>
 </html>
